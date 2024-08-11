@@ -1,0 +1,17 @@
+{
+  "name": "com.arkker.vpm.player-queue",
+  "displayName": "aRkker's Player Queue",
+  "version": "1.0.3",
+  "description": "This package is a little queue system that allows you to queue up for whatever, saves your spot for a specified amount of time and other features",
+  "gitDependencies": {},
+  "vpmDependencies": {},
+  "author": {
+    "name": "aRkker",
+    "email": "",
+    "url": "https://arkker.github.io/vpm-repo/"
+  },
+  "legacyFolders": {},
+  "legacyFiles": {},
+  "localPath": "E:\\vrdev\\vrchat\\vpm-player-queue\\Packages\\com.arkker.vpm.player-queue",
+  "unity": "2022.3"
+}
