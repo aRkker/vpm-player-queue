@@ -115,9 +115,10 @@ public class QueueSystem : UdonSharpBehaviour
     {
         if (!Networking.IsMaster) return;
 
-        int[] playersToRemove = new int[playerNames.Length];
         int removeCount = 0;
+        bool[] playersToRemoveFlags = new bool[playerNames.Length];
 
+        // First pass: Identify players to remove
         for (int i = 0; i < playerNames.Length; i++)
         {
             string playerName = playerNames[i];
@@ -126,27 +127,29 @@ public class QueueSystem : UdonSharpBehaviour
                 if (_playerLeftQueueTimes[playerName].Double < Time.time)
                 {
                     Debug.Log("Player " + playerName + " has been gone for too long, removing them from the queue");
-                    Debug.Log("Index: " + i);
-
-                    playersToRemove[removeCount] = i;
+                    playersToRemoveFlags[i] = true;
                     removeCount++;
                 }
             }
         }
 
-        string[] newPlayerNames = new string[playerNames.Length - removeCount];
-        int newIndex = 0;
-        for (int i = 0; i < playerNames.Length; i++)
+        // If there are players to remove, create a new array
+        if (removeCount > 0)
         {
-            if (System.Array.IndexOf(playersToRemove, i) == -1)
-            {
-                newPlayerNames[newIndex] = playerNames[i];
-                newIndex++;
-            }
-        }
+            string[] newPlayerNames = new string[playerNames.Length - removeCount];
+            int newIndex = 0;
 
-        if (newPlayerNames.Length != playerNames.Length)
-        {
+            // Second pass: Copy over players that are not being removed
+            for (int i = 0; i < playerNames.Length; i++)
+            {
+                if (!playersToRemoveFlags[i])
+                {
+                    newPlayerNames[newIndex] = playerNames[i];
+                    newIndex++;
+                }
+            }
+
+            // Sync the new list
             Debug.Log("Found a player to remove, syncing the queue");
             Networking.SetOwner(Networking.LocalPlayer, gameObject);
             playerNames = newPlayerNames;
@@ -154,10 +157,10 @@ public class QueueSystem : UdonSharpBehaviour
             OnDeserialization();
         }
 
-
-
-        SendCustomEventDelayedSeconds("LeftPlayerChecker", 10); // Call this function again in 10 seconds
+        // Call this function again in 10 seconds
+        SendCustomEventDelayedSeconds("LeftPlayerChecker", 10);
     }
+
 
 
     // This function gets called whenever a player leaves the world
