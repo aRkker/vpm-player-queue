@@ -36,8 +36,10 @@ public class QueueSystem : UdonSharpBehaviour
     [Header("And aint nobody else to blame sans yourself")]
 
 
+    private string[] playerNames = new string[0];
+    [UdonSynced] public string playerNamesString = "";
+    private string delimiter = "\u2023";  // Unique delimiter unlikely to be in player names
 
-    [UdonSynced] public string[] playerNames = new string[0];
 
     [UdonSynced] public bool queueEnabled = true;
 
@@ -45,6 +47,19 @@ public class QueueSystem : UdonSharpBehaviour
 
     private DataDictionary _playerLeftQueueTimes = new DataDictionary();
 
+    private string SerializePlayerNames(string[] names)
+    {
+        return string.Join(delimiter, names);
+    }
+
+    private string[] DeserializePlayerNames(string namesString)
+    {
+        if (string.IsNullOrEmpty(namesString))
+        {
+            return new string[0];
+        }
+        return namesString.Split(new string[] { delimiter }, System.StringSplitOptions.None);
+    }
 
     void Start()
     {
@@ -121,44 +136,50 @@ public class QueueSystem : UdonSharpBehaviour
         for (int i = 0; i < playerNames.Length; i++)
         {
             string playerName = playerNames[i];
-            if (_playerLeftQueueTimes.ContainsKey(playerName))
+            if (_playerLeftQueueTimes.ContainsKey(playerName) && _playerLeftQueueTimes[playerName].Double < Time.time)
             {
-                if (_playerLeftQueueTimes[playerName].Double < Time.time)
-                {
-                    Debug.Log("Player " + playerName + " has been gone for too long, removing them from the queue");
-                    Debug.Log("Index: " + i);
-
-                    playersToRemove[removeCount] = i;
-                    removeCount++;
-                }
+                Debug.Log("Player " + playerName + " has been gone for too long, removing them from the queue");
+                playersToRemove[removeCount] = i;
+                removeCount++;
             }
         }
 
         string[] newPlayerNames = new string[playerNames.Length - removeCount];
         int newIndex = 0;
+
         for (int i = 0; i < playerNames.Length; i++)
         {
-            if (System.Array.IndexOf(playersToRemove, i) == -1)
+            bool shouldRemove = false;
+
+            for (int j = 0; j < removeCount; j++)
+            {
+                if (i == playersToRemove[j])
+                {
+                    shouldRemove = true;
+                    break;
+                }
+            }
+
+            if (!shouldRemove)
             {
                 newPlayerNames[newIndex] = playerNames[i];
                 newIndex++;
             }
         }
 
+        // Only serialize if there is a change in the playerNames array
         if (newPlayerNames.Length != playerNames.Length)
         {
-            Debug.Log("Found a player to remove, syncing the queue");
+            Debug.Log("Found players to remove, syncing the queue");
             Networking.SetOwner(Networking.LocalPlayer, gameObject);
-            playerNames = newPlayerNames;
+            playerNamesString = SerializePlayerNames(newPlayerNames);
+
             RequestSerialization();
             OnDeserialization();
         }
 
-
-
-        SendCustomEventDelayedSeconds("LeftPlayerChecker", 10); // Call this function again in 10 seconds
+        SendCustomEventDelayedSeconds("LeftPlayerChecker", 10);
     }
-
 
     // This function gets called whenever a player leaves the world
     public override void OnPlayerLeft(VRCPlayerApi player)
@@ -268,6 +289,8 @@ public class QueueSystem : UdonSharpBehaviour
         // Finally, since we want this to be synced to everyone, the local player has to take ownership of the object, and then sync it to everyone
         Networking.SetOwner(Networking.LocalPlayer, gameObject);
 
+        playerNamesString = SerializePlayerNames(playerNames);
+
         // Sync the player names list to everyone
         RequestSerialization();
 
@@ -309,6 +332,8 @@ public class QueueSystem : UdonSharpBehaviour
         // Finally, since we want this to be synced to everyone, the local player has to take ownership of the object, and then sync it to everyone
         Networking.SetOwner(Networking.LocalPlayer, gameObject);
 
+        playerNamesString = SerializePlayerNames(playerNames);
+
         // Sync the player names list to everyone
         RequestSerialization();
 
@@ -320,6 +345,7 @@ public class QueueSystem : UdonSharpBehaviour
     // The following function gets called whenever something is deserialized (ie, syncrhonized) from somewhere else to the local player
     public override void OnDeserialization()
     {
+        playerNames = DeserializePlayerNames(playerNamesString);
         // This is a pretty heavy thing to do things, but since the queue doesn't change that often, it's fine
         // We are going to destroy all the player placks and then recreate them from the player names list
 
