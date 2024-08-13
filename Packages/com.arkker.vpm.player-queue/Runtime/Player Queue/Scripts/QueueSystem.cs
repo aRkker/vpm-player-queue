@@ -259,7 +259,6 @@ public class QueueSystem : UdonSharpBehaviour
             newPlayerNames[i] = playerNames[i]; // Copy the existing player names to the new list
         }
         newPlayerNames[playerNames.Length] = Networking.LocalPlayer.displayName; // Add the new player to the end of the list
-        playerNames = newPlayerNames; // Set the new list as the player names list
 
         // Since we're adding a player to the queue, we need to instantiate a player plack for them
         GameObject newPlayerPlack = Instantiate(playerPlackPrefabReference);
@@ -289,7 +288,7 @@ public class QueueSystem : UdonSharpBehaviour
         // Finally, since we want this to be synced to everyone, the local player has to take ownership of the object, and then sync it to everyone
         Networking.SetOwner(Networking.LocalPlayer, gameObject);
 
-        playerNamesString = SerializePlayerNames(playerNames);
+        playerNamesString = SerializePlayerNames(newPlayerNames);
 
         // Sync the player names list to everyone
         RequestSerialization();
@@ -345,7 +344,9 @@ public class QueueSystem : UdonSharpBehaviour
     // The following function gets called whenever something is deserialized (ie, syncrhonized) from somewhere else to the local player
     public override void OnDeserialization()
     {
+        Debug.Log("Before deserialization: " + playerNamesString);
         playerNames = DeserializePlayerNames(playerNamesString);
+
         // This is a pretty heavy thing to do things, but since the queue doesn't change that often, it's fine
         // We are going to destroy all the player placks and then recreate them from the player names list
 
@@ -442,6 +443,8 @@ public class QueueSystem : UdonSharpBehaviour
         // Finally, since we want this to be synced to everyone, the local player has to take ownership of the object, and then sync it to everyone
         Networking.SetOwner(Networking.LocalPlayer, gameObject);
 
+        playerNamesString = SerializePlayerNames(playerNames);
+
         // Sync the player names list to everyone
         RequestSerialization();
 
@@ -468,6 +471,9 @@ public class QueueSystem : UdonSharpBehaviour
 
         // Finally, since we want this to be synced to everyone, the local player has to take ownership of the object, and then sync it to everyone
         Networking.SetOwner(Networking.LocalPlayer, gameObject);
+
+
+        playerNamesString = SerializePlayerNames(playerNames);
 
         // Sync the player names list to everyone
         RequestSerialization();
