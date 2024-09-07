@@ -415,11 +415,13 @@ public class QueueSystem : UdonSharpBehaviour
 
         if (!localPlayerFound && !queueEnabled)
         {
-            joinLeaveButton.interactable = false;
+            joinLeaveButton.gameObject.SetActive(false);
         }
         else if (!localPlayerFound && queueEnabled)
         {
-            joinLeaveButton.interactable = true;
+            // joinLeaveButton.enabled = true;
+            joinLeaveButton.gameObject.SetActive(true);
+
         }
     }
 
