@@ -47,6 +47,38 @@ public class QueueSystem : UdonSharpBehaviour
 
     private DataDictionary _playerLeftQueueTimes = new DataDictionary();
 
+    // The bundled TMP font is a static Latin-centric atlas with a narrow fallback range.
+    // Strip unsupported characters from the queue label so decorative Unicode does not collapse the row into ellipsis.
+    private string GetDisplayNameForQueueLabel(string playerName)
+    {
+        if (string.IsNullOrEmpty(playerName))
+        {
+            return "";
+        }
+
+        string sanitizedName = "";
+
+        for (int i = 0; i < playerName.Length; i++)
+        {
+            char character = playerName[i];
+
+            if (
+                (character >= 32 && character <= 126) ||
+                (character >= 160 && character <= 255) ||
+                (character >= 8192 && character <= 8303) ||
+                character == 8364 ||
+                character == 8482
+            )
+            {
+                sanitizedName += character;
+            }
+        }
+
+        sanitizedName = sanitizedName.Trim();
+
+        return string.IsNullOrEmpty(sanitizedName) ? playerName : sanitizedName;
+    }
+
     private string SerializePlayerNames(string[] names)
     {
         return string.Join(delimiter, names);
@@ -264,7 +296,7 @@ public class QueueSystem : UdonSharpBehaviour
         GameObject newPlayerPlack = Instantiate(playerPlackPrefabReference);
 
         // Set the player plack's name to the player's name
-        newPlayerPlack.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = Networking.LocalPlayer.displayName;
+        newPlayerPlack.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = GetDisplayNameForQueueLabel(Networking.LocalPlayer.displayName);
 
         // Set the player plack's parent to the queue list content object
         newPlayerPlack.transform.SetParent(queueListContent, false);
@@ -319,13 +351,9 @@ public class QueueSystem : UdonSharpBehaviour
         playerNames = newPlayerNames; // Set the new list as the player names list
 
         // Since we're removing a player from the queue, we need to find the player plack and destroy it
-        foreach (Transform child in queueListContent)
+        if (index >= 0 && index < queueListContent.childCount)
         {
-            if (child.GetComponentInChildren<TMPro.TextMeshProUGUI>().text == Networking.LocalPlayer.displayName) // Find the player plack with the player's name
-            {
-                Destroy(child.gameObject); // Destroy the player plack
-                break;
-            }
+            Destroy(queueListContent.GetChild(index).gameObject);
         }
 
         // Finally, since we want this to be synced to everyone, the local player has to take ownership of the object, and then sync it to everyone
@@ -365,7 +393,7 @@ public class QueueSystem : UdonSharpBehaviour
         foreach (string playerName in playerNames) // For each player in the player names list
         {
             GameObject newPlayerPlack = Instantiate(playerPlackPrefabReference); // Instantiate a new player plack
-            newPlayerPlack.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = playerName; // Set the player plack's name to the player's name
+            newPlayerPlack.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = GetDisplayNameForQueueLabel(playerName); // Set the player plack's name to the player's name
             newPlayerPlack.transform.SetParent(queueListContent, false); // Set the player plack's parent to the queue list content object
 
             if (playerName == Networking.LocalPlayer.displayName) // If the player is the local player
